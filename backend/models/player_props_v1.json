@@ -1,0 +1,73 @@
+{
+  "model_version": "player_props_v1",
+  "features": [
+    "minutes_r5",
+    "minutes_r10",
+    "pts_r5",
+    "pts_r10",
+    "reb_r5",
+    "reb_r10",
+    "ast_r5",
+    "ast_r10",
+    "fga_r5",
+    "fga_r10",
+    "fta_r5",
+    "fta_r10",
+    "tov_r5",
+    "tov_r10",
+    "minutes_season",
+    "pts_season",
+    "reb_season",
+    "ast_season",
+    "games_this_season",
+    "minutes_trend",
+    "minutes_last",
+    "rest_days",
+    "back_to_back",
+    "is_home",
+    "opp_pts_allowed_r10",
+    "opp_pace_r10"
+  ],
+  "trained_on_seasons": [
+    "2021-22",
+    "2022-23",
+    "2023-24",
+    "2024-25",
+    "2025-26",
+    "2026-27"
+  ],
+  "validation_season": [
+    "2024-25"
+  ],
+  "test_season": [
+    "2025-26"
+  ],
+  "min_minutes_r10": 12,
+  "metrics": {
+    "pts": {
+      "val_mae": 4.876116818595912,
+      "test_mae": 4.826146974174694,
+      "val_baseline_mae": 5.032405951634869,
+      "test_baseline_mae": 4.962222431600674,
+      "test_interval_coverage": 0.7910033983187266,
+      "best_n_estimators": 266
+    },
+    "reb": {
+      "val_mae": 1.992307031903367,
+      "test_mae": 1.960957588061542,
+      "val_baseline_mae": 2.0494207663041064,
+      "test_baseline_mae": 2.017627962172766,
+      "test_interval_coverage": 0.7919871221606153,
+      "best_n_estimators": 257
+    },
+    "ast": {
+      "val_mae": 1.4325568686718406,
+      "test_mae": 1.4291758295128507,
+      "val_baseline_mae": 1.4803187377578626,
+      "test_baseline_mae": 1.4643025710254292,
+      "test_interval_coverage": 0.8204703988553032,
+      "best_n_estimators": 210
+    }
+  },
+  "trained_on": "2026-11-24"
+}
