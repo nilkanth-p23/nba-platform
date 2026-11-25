@@ -1,0 +1,54 @@
+{
+  "model_version": "pregame_v1",
+  "features": [
+    "diff_pts_r5",
+    "diff_pts_r10",
+    "diff_opp_pts_r5",
+    "diff_opp_pts_r10",
+    "diff_margin_r5",
+    "diff_margin_r10",
+    "diff_efg_r5",
+    "diff_efg_r10",
+    "diff_tov_rate_r5",
+    "diff_tov_rate_r10",
+    "diff_reb_rate_r5",
+    "diff_reb_rate_r10",
+    "diff_poss_r5",
+    "diff_poss_r10",
+    "diff_net_rating_r5",
+    "diff_net_rating_r10",
+    "diff_win_r5",
+    "diff_win_r10",
+    "diff_season_win_pct",
+    "diff_rest_days",
+    "diff_back_to_back",
+    "diff_games_last_7",
+    "home_rest_days",
+    "away_rest_days",
+    "home_back_to_back",
+    "away_back_to_back",
+    "elo_diff"
+  ],
+  "trained_on_seasons": [
+    "2021-22",
+    "2022-23",
+    "2023-24",
+    "2024-25",
+    "2025-26",
+    "2026-27"
+  ],
+  "validation_season": [
+    "2024-25"
+  ],
+  "test_season": [
+    "2025-26"
+  ],
+  "test_metrics_calibrated": {
+    "test_log_loss": 0.6053436994552612,
+    "test_brier": 0.20864653587341309,
+    "test_accuracy": 0.6751020408163265
+  },
+  "best_n_estimators": 148,
+  "calibration": "Platt scaling fit on 2024-25 validation predictions",
+  "trained_on": "2026-11-24"
+}
