@@ -1,0 +1,33 @@
+{
+  "model_version": "live_win_v1",
+  "features": [
+    "margin",
+    "sec_remaining",
+    "period",
+    "elo_diff",
+    "margin_per_sqrt",
+    "elo_fade"
+  ],
+  "trained_on_seasons": [
+    "2021-22",
+    "2022-23",
+    "2023-24",
+    "2024-25",
+    "2025-26",
+    "2026-27"
+  ],
+  "validation_season": [
+    "2024-25"
+  ],
+  "test_season": [
+    "2025-26"
+  ],
+  "bucket_seconds": 30,
+  "test_metrics_calibrated": {
+    "test_log_loss": 0.4423553039616673,
+    "test_brier": 0.14740338970393102,
+    "test_accuracy": 0.7791876025647533
+  },
+  "best_n_estimators": 81,
+  "trained_on": "2026-11-26"
+}
