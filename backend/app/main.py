@@ -66,6 +66,16 @@ def live(game_id: GameID):
     return services.live_probability(game_id)
 
 
+@app.get("/matchups/{day}/{slug}")
+def named_matchup(day: date, slug: str):
+    return services.resolve_matchup(day, slug)
+
+
+@app.get("/games/{game_id}/players")
+def matchup_players(game_id: GameID):
+    return services.matchup_players(game_id)
+
+
 @app.get("/players")
 def players(q: Annotated[str, Query(min_length=2, max_length=80)]):
     return services.find_players(q)

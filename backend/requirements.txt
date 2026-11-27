@@ -5,9 +5,9 @@ psycopg[binary]
 pandas
 numpy
 scikit-learn==1.9.1
-xgboost==3.4.1
+xgboost-cpu==3.4.1; sys_platform == "linux" and platform_machine == "x86_64"
+xgboost==3.4.1; sys_platform != "linux" or platform_machine != "x86_64"
 lightgbm==4.7.0
-shap
 joblib
 nba_api
 python-dotenv

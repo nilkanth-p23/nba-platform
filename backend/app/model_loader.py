@@ -1,3 +1,4 @@
+import ctypes
 import json
 import os
 from functools import lru_cache
@@ -12,6 +13,10 @@ VERSIONS = ("pregame_v1", "player_props_v1", "live_win_v1")
 
 @lru_cache(maxsize=1)
 def load_models():
+    # Lightweight hosted runtimes may ship OpenMP alongside the application.
+    openmp = MODEL_DIR.parent / "lib" / "libgomp.so.1"
+    if openmp.is_file():
+        ctypes.CDLL(str(openmp))
     pregame_dir = Path(os.getenv("PREGAME_MODEL_DIR", str(MODEL_DIR)))
     return {
         name: (

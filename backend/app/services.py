@@ -1,9 +1,9 @@
 import re
-from datetime import date
+from datetime import date, timedelta
 
 import pandas as pd
 from nba_api.stats.static import players
-from sqlalchemy import exists, select
+from sqlalchemy import exists, func, select
 from xgboost import DMatrix
 
 from app.db import SessionLocal, engine
@@ -60,6 +60,46 @@ def matchup(game_id):
         if game is None:
             raise DataUnavailable("Game ID was not found in the archive.")
         return archived(game)
+
+
+def resolve_matchup(day, slug):
+    with SessionLocal() as session:
+        archive = session.scalars(select(Game).where(
+            Game.game_date == day, Game.home_win.is_not(None),
+        )).all()
+    candidates = [archived(game) for game in archive]
+    for game in candidates:
+        if matchup_slug(game) == slug:
+            return game
+    try:
+        for game in schedule(day):
+            item = named(game)
+            if matchup_slug(item) == slug:
+                return item
+    except FEED_ERRORS as exc:
+        raise DataUnavailable("The matchup could not be loaded. Try the scoreboard.") from exc
+    raise DataUnavailable("This matchup is unavailable. Choose another game on the scoreboard.")
+
+
+def matchup_slug(game):
+    title = f'{game["away"]} at {game["home"]}'.lower()
+    return re.sub(r"[^a-z0-9]+", "-", title).strip("-")
+
+
+def matchup_players(game_id):
+    game = matchup(game_id)
+    day = date.fromisoformat(game["game_date"])
+    log = PlayerGameLog
+    latest = select(log.player_id, log.player_name, log.team_id, func.row_number().over(
+        partition_by=log.player_id, order_by=(log.game_date.desc(), log.game_id.desc()),
+    ).label("rank")).where(log.game_date < day, log.game_date >= day - timedelta(days=45),
+                           log.minutes > 0).subquery()
+    with SessionLocal() as session:
+        rows = session.execute(select(latest.c.player_id, latest.c.player_name, latest.c.team_id)
+            .where(latest.c.rank == 1, latest.c.team_id.in_(
+                (game["home_team_id"], game["away_team_id"])))
+            .order_by(latest.c.player_name)).all()
+    return [{"id": r.player_id, "name": r.player_name, "team_id": r.team_id} for r in rows]
 
 
 def matchup_frames(game):

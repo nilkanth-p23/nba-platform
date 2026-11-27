@@ -2,9 +2,10 @@ const base = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 
 export type Game = {
   game_id: string; game_date: string; home: string; away: string; status: string;
+  home_team_id: number; away_team_id: number;
   home_score: number | null; away_score: number | null; starts_at?: string; source: string;
 };
-type Driver = { feature: string; log_odds_impact: number };
+export type Driver = { feature: string; log_odds_impact: number };
 type Point = { elapsed: number; home_win_prob: number };
 type Metric = { count: number; accuracy: number; brier: number; log_loss: number };
 type Report = {
@@ -15,12 +16,12 @@ type Report = {
 export type Scoreboard = { date: string; games: Game[]; replays: Game[]; warning: string | null };
 export type Prediction = Game & { home_win_prob: number; drivers: Driver[]; retrospective: boolean };
 export type Live = Game & { points: Point[]; home_win_prob: number | null };
-export type Player = { id: number; name: string };
+export type Player = { id: number; name: string; team_id?: number };
 export type Projection = {
   player: string; retrospective: boolean;
   stats: Record<string, { mean: number; low: number; high: number }>;
 };
-export type Chat = { answer: string; evidence: unknown[] };
+export type Chat = { answer: string; evidence: { tool: string }[] };
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(base + path, { cache: "no-store", ...init });
@@ -33,6 +34,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   games: (day?: string) => request<Scoreboard>(day ? `/games/today?day=${encodeURIComponent(day)}` : "/games/today"),
+  matchup: (key: string) => request<Game>(`/matchups/${key}`),
+  roster: (id: string) => request<Player[]>(`/games/${id}/players`),
   prediction: (id: string) => request<Prediction>(`/games/${id}/prediction`),
   live: (id: string) => request<Live>(`/games/${id}/live`),
   players: (query: string) => request<Player[]>(`/players?q=${encodeURIComponent(query)}`),

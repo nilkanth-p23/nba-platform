@@ -70,39 +70,77 @@ def run_tool(name, arguments):
         return {"error": str(exc)}
 
 
+def request_turn(client, messages):
+    if settings.analyst_provider == "workers_ai":
+        account = settings.cloudflare_account_id
+        token = settings.cloudflare_ai_token.get_secret_value()
+        response = client.post(
+            f"https://api.cloudflare.com/client/v4/accounts/{account}/ai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"model": settings.workers_ai_model, "messages": messages, "tools": SCHEMAS,
+                  "stream": False, "max_tokens": 450, "temperature": 0},
+        )
+        response.raise_for_status()
+        return response.json()["choices"][0]["message"]
+
+    response = client.post(f"{settings.ollama_url.rstrip('/')}/api/chat", json={
+        "model": settings.ollama_model, "stream": False, "think": False,
+        "messages": messages, "tools": SCHEMAS,
+        "options": {"temperature": 0, "num_ctx": 8192, "num_predict": 350, "num_thread": 4},
+    })
+    response.raise_for_status()
+    return response.json()["message"]
+
+
 def ask(question):
     if not settings.analyst_enabled:
-        raise services.DataUnavailable("The analyst runs in the local edition of this app.")
+        raise services.DataUnavailable("The analyst is disabled on this deployment.")
     system = ("You are an NBA analyst. Always call a tool before making a factual claim. "
               "Use only tool results. Quote exact numbers, distinguish replay from live, "
               "and say if data is unavailable. Never invent a game ID. "
-              "A probability of 0.62 means 62%. Keep answers brief. Educational use only.")
+              "A probability of 0.62 means 62%. Mention teams and dates instead of game IDs. "
+              "Translate feature names into plain basketball language. Keep answers brief.")
     messages = [{"role": "system", "content": system}, {"role": "user", "content": question}]
     evidence = []
+    hosted = settings.analyst_provider == "workers_ai"
     try:
-        with httpx.Client(timeout=45) as client:
-            for _ in range(5):
-                response = client.post(f"{settings.ollama_url.rstrip('/')}/api/chat", json={
-                    "model": settings.ollama_model, "stream": False, "think": False,
-                    "messages": messages, "tools": SCHEMAS,
-                    "options": {"temperature": 0, "num_ctx": 8192, "num_predict": 350, "num_thread": 4},
-                })
-                response.raise_for_status()
-                message = response.json()["message"]
-                calls = message.get("tool_calls") or []
+        with httpx.Client(timeout=httpx.Timeout(60 if hosted else 45, connect=6)) as client:
+            for _ in range(4 if hosted else 5):
+                message = request_turn(client, messages)
+                calls = (message.get("tool_calls") or [])[:3]
+                content = message.get("content") or ""
                 if not calls:
-                    if evidence and message.get("content", "").strip():
-                        return {"answer": message["content"], "evidence": evidence}
+                    if evidence and content.strip():
+                        return {"answer": content, "evidence": evidence}
                     break
-                messages.append(message)
-                for call in calls[:3]:
+                if hosted:
+                    messages.append({"role": "assistant", "content": content or None,
+                                     "tool_calls": calls})
+                else:
+                    messages.append({**message, "tool_calls": calls})
+                for call in calls:
                     function = call["function"]
                     name = function["name"]
-                    result = run_tool(name, function.get("arguments", {}))
-                    evidence.append({"tool": name, "arguments": function.get("arguments", {}), "result": result})
-                    messages.append({"role": "tool", "tool_name": name,
-                                     "content": json.dumps(result, default=str)})
-    except (httpx.HTTPError, KeyError, ValueError, TypeError) as exc:
-        raise services.DataUnavailable("Ollama is unavailable or returned an invalid response.") from exc
+                    raw = function.get("arguments", {})
+                    try:
+                        arguments = json.loads(raw) if isinstance(raw, str) else raw
+                    except json.JSONDecodeError:
+                        arguments = None
+                    result = run_tool(name, arguments)
+                    evidence.append({"tool": name, "arguments": arguments, "result": result})
+                    tool_response = {"role": "tool", "content": json.dumps(result, default=str)}
+                    if hosted:
+                        tool_response["tool_call_id"] = call["id"]
+                    else:
+                        tool_response["tool_name"] = name
+                    messages.append(tool_response)
+    except httpx.HTTPStatusError as exc:
+        if hosted:
+            return {"answer": "The hosted analyst is temporarily unavailable. The game and player pages still show the underlying estimates.",
+                    "evidence": evidence}
+        raise services.DataUnavailable("Ollama is unavailable.") from exc
+    except (httpx.HTTPError, KeyError, ValueError, TypeError, IndexError) as exc:
+        provider = "The hosted analyst" if hosted else "Ollama"
+        raise services.DataUnavailable(f"{provider} is unavailable or returned an invalid response.") from exc
     return {"answer": "I couldn't verify an answer. Try a team abbreviation or a game ID.",
             "evidence": evidence}

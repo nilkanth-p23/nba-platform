@@ -102,3 +102,36 @@ def test_all_analyst_tools(monkeypatch):
     assert analyst.run_tool("get_player_projection", {**game, "player_name": "A Player"})["id"] == 42
     assert analyst.run_tool("get_prediction_drivers", game)["home_win_prob"] == 0.6
     assert analyst.run_tool("get_team_recent_form", {"team": "BOS"})["team"] == "BOS"
+
+
+def test_hosted_analyst_round_trip(monkeypatch):
+    import json
+
+    import httpx
+    from pydantic import SecretStr
+
+    monkeypatch.setattr(analyst.settings, "analyst_provider", "workers_ai")
+    monkeypatch.setattr(analyst.settings, "cloudflare_account_id", "test-account")
+    monkeypatch.setattr(analyst.settings, "cloudflare_ai_token", SecretStr("mock-token"))
+    monkeypatch.setitem(analyst.TOOLS, "get_team_recent_form",
+                        (analyst.TeamInput, lambda team: {"team": team, "wins": 4}, ""))
+    calls = []
+
+    def post(_client, url, *, headers, json):
+        assert url.endswith("/accounts/test-account/ai/v1/chat/completions")
+        assert headers["Authorization"] == "Bearer mock-token"
+        calls.append(list(json["messages"]))
+        if len(calls) == 1:
+            message = {"content": None, "tool_calls": [{
+                "id": "call_1", "type": "function",
+                "function": {"name": "get_team_recent_form", "arguments": '{"team":"BOS"}'},
+            }]}
+        else:
+            message = {"content": "Boston won four games."}
+        return httpx.Response(200, request=httpx.Request("POST", url),
+                              json={"choices": [{"message": message}]})
+
+    monkeypatch.setattr(analyst.httpx.Client, "post", post)
+    assert analyst.ask("How did Boston do?")["answer"] == "Boston won four games."
+    assert calls[1][-1]["tool_call_id"] == "call_1"
+    assert json.loads(calls[1][-1]["content"]) == {"team": "BOS", "wins": 4}
