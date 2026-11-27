@@ -39,7 +39,7 @@ npm ci
 npm run dev
 ```
 
-Open [Courtside](http://localhost:3000) and [API docs](http://127.0.0.1:8000/docs). On dates without games, pick an archived game. For a chat smoke test, ask “How have the Celtics done in their last five logged games?” and open the tool results.
+Open [Courtside](https://courtsideanalyst.vercel.app/). On dates without games, pick an archived game. For a chat smoke test, ask “How have the Celtics done in their last five logged games?” and open the tool results.
 
 ## Model card
 
