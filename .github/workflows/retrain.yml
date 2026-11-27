@@ -1,0 +1,36 @@
+name: Evaluate pregame candidate
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 15 * * 1'
+permissions:
+  contents: read
+concurrency:
+  group: nba-retrain
+jobs:
+  candidate:
+    if: vars.ENABLE_HOSTED_UPDATES == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+      TRAINED_THROUGH: ${{ vars.PREGAME_TRAINED_THROUGH }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: pip install -r requirements.txt -r requirements-dev.txt
+      - run: |
+          export MLFLOW_TRACKING_URI="${MLFLOW_TRACKING_URI:-sqlite:///mlflow.db}"
+          python -m ml.retrain --incumbent-trained-through "$TRAINED_THROUGH" --output candidate
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pregame-retraining
+          path: |
+            backend/candidate
+            backend/mlflow.db

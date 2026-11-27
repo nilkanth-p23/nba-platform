@@ -1,0 +1,36 @@
+* { box-sizing: border-box; }
+:root { color-scheme: dark; --ink: #eaf3ee; --muted: #a7b9b0; --accent: #a6f180; --line: #29413b; background: #101b18; color: var(--ink); font-family: system-ui, sans-serif; }
+body { margin: 0; }
+header { border-bottom: 1px solid var(--line); }
+nav, main, footer { max-width: 1160px; margin: auto; padding: 1rem clamp(1rem, 4vw, 3rem); }
+nav, nav div, .section-head, .form { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+nav, .section-head { justify-content: space-between; }
+nav a { color: var(--ink); }
+a { color: var(--accent); text-underline-offset: .2em; }
+.brand { font-weight: 900; text-decoration: none; letter-spacing: -.055em; font-size: 1.55rem; }
+.brand span, .eyebrow, strong { color: var(--accent); }
+.hero { padding: clamp(2rem, 6vw, 5rem) 0 2rem; border-bottom: 1px solid var(--line); margin-bottom: 1rem; }
+.hero p, .muted, footer { color: var(--muted); }
+h1 { font-size: clamp(2.1rem, 7vw, 5rem); line-height: 1.02; letter-spacing: -.065em; margin: .4em 0; }
+h2, h3 { line-height: 1.2; }
+h3 { margin: .65em 0; }
+.eyebrow { text-transform: uppercase; letter-spacing: .1em; font-size: .75rem; font-weight: 750; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 1rem; }
+.panel { background: #162722; border: 1px solid var(--line); border-radius: 1rem; padding: clamp(1rem, 2.5vw, 1.5rem); margin: .7rem 0; overflow-x: auto; }
+.grid .panel { margin: 0; }
+.score { font-size: 1.9rem; font-weight: 800; margin: .3em 0; }
+.score span { color: var(--muted); }
+.form { align-items: end; }
+label { display: grid; gap: .35rem; font-size: .85rem; }
+input, button { font: inherit; border-radius: .45rem; padding: .65rem .8rem; border: 1px solid var(--line); }
+input { background: #0d1815; color: var(--ink); max-width: 100%; }
+button { color: #12230f; background: var(--accent); cursor: pointer; font-weight: 700; }
+button:disabled { opacity: .55; cursor: wait; }
+.grow { flex: 1 1 240px; }
+.players { display: flex; flex-wrap: wrap; gap: .5rem; padding: 0; list-style: none; margin: 1rem 0; }
+.answer { white-space: pre-wrap; }
+pre { overflow: auto; max-height: 24rem; }
+.chart { height: 285px; min-width: 0; }
+table { width: 100%; text-align: left; border-collapse: collapse; }
+td, th { padding: .55rem .3rem; border-bottom: 1px solid var(--line); }
+footer { border-top: 1px solid var(--line); margin-top: 2rem; font-size: .85rem; }

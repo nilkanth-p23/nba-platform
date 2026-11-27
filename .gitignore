@@ -7,3 +7,9 @@ mlartifacts/
 node_modules/
 .next/
 .DS_Store
+
+.env.local
+.env.docker
+next-env.d.ts
+*.tsbuildinfo
+backend/candidate*/

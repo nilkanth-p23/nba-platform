@@ -4,6 +4,5 @@ optuna
 jupyterlab
 matplotlib
 pytest
-httpx
 ruff
 pyarrow
