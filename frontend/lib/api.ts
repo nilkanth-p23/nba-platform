@@ -3,7 +3,7 @@ const base = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 export type Game = {
   game_id: string; game_date: string; home: string; away: string; status: string;
   home_team_id: number; away_team_id: number;
-  home_score: number | null; away_score: number | null; starts_at?: string; source: string;
+  home_score: number | null; away_score: number | null; starts_at?: string; season?: string; source: string;
 };
 export type Driver = { feature: string; log_odds_impact: number };
 type Point = { elapsed: number; home_win_prob: number };
@@ -34,6 +34,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   games: (day?: string) => request<Scoreboard>(day ? `/games/today?day=${encodeURIComponent(day)}` : "/games/today"),
+  seasons: () => request<{ seasons: string[] }>("/archive/seasons"),
+  seasonGames: (season: string) => request<{ games: Game[] }>(`/archive/seasons/${encodeURIComponent(season)}/games`),
   matchup: (key: string) => request<Game>(`/matchups/${key}`),
   roster: (id: string) => request<Player[]>(`/games/${id}/players`),
   prediction: (id: string) => request<Prediction>(`/games/${id}/prediction`),

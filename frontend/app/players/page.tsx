@@ -11,6 +11,11 @@ const statNames: Record<string, string> = { pts: "Points", reb: "Rebounds", ast:
 function Players() {
   const params = useSearchParams();
   const [key, setKey] = useState(params.get("matchup") || "");
+  const linkedSeason = params.get("season") || "";
+  const [season, setSeason] = useState(/^\d{4}-\d{2}$/.test(linkedSeason) ? linkedSeason : "");
+  const [seasons, setSeasons] = useState<string[]>([]);
+  const [seasonError, setSeasonError] = useState("");
+  const [gameFilter, setGameFilter] = useState("");
   const [games, setGames] = useState<Game[]>([]);
   const [selected, setSelected] = useState<Game>();
   const [roster, setRoster] = useState<Player[]>([]);
@@ -27,11 +32,20 @@ function Players() {
 
   useEffect(() => {
     let active = true;
-    api.games().then(board => { if (active) setGames([...board.games, ...board.replays]); })
+    api.seasons().then(value => { if (active) setSeasons(value.seasons); })
+      .catch(error => { if (active) setSeasonError(errorMessage(error)); });
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const list = season ? api.seasonGames(season).then(value => value.games)
+      : api.games().then(value => [...value.games, ...value.replays]);
+    list.then(games => { if (active) setGames(games); })
       .catch(error => { if (active) setError(errorMessage(error)); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, []);
+  }, [season]);
 
   useEffect(() => {
     let active = true;
@@ -46,11 +60,23 @@ function Players() {
   }, [key]);
 
   const options = useMemo(() => selected && !games.some(game => gameKey(game) === gameKey(selected)) ? [selected, ...games] : games, [games, selected]);
+  const search = gameFilter.trim().toLowerCase();
+  const visibleGames = useMemo(() => search ? options.filter(game => gameKey(game) === key ||
+    `${gameLabel(game)} ${readableDate(game.game_date, true)} ${game.game_date}`.toLowerCase().includes(search))
+    : options, [key, options, search]);
   const filtered = roster.filter(player => player.name.toLowerCase().includes(query.trim().toLowerCase()));
 
   function choose(next: string) {
     setKey(next); setProjection(undefined); setRoster([]); setQuery(""); setError("");
     setSelected(undefined); setRequesting(Boolean(next));
+  }
+
+  function chooseSeason(next: string) {
+    choose("");
+    setSeason(next);
+    setGameFilter("");
+    setGames([]);
+    setLoading(true);
   }
 
   async function showProjection(player: Player) {
@@ -62,15 +88,24 @@ function Players() {
   }
 
   return <>
-    <PageTitle label="Player projections" title="How might they play?" description="Choose a matchup and player to see estimates for points, rebounds, and assists." />
+    <PageTitle label="Player projections" title="How might they play?" description="Choose a season, matchup, and player to see estimates for points, rebounds, and assists." />
     <div className="panel picker-panel">
-      <label>Matchup<select value={key} onChange={event => choose(event.target.value)} disabled={requesting}>
-        <option value="">{loading ? "Loading matchups…" : "Choose a matchup"}</option>
-        {options.map(game => <option key={gameKey(game)} value={gameKey(game)}>{gameLabel(game)} · {readableDate(game.game_date)}</option>)}
+      <label>Season<select value={season} onChange={event => chooseSeason(event.target.value)} disabled={requesting}>
+        <option value="">Recent and upcoming games</option>
+        {seasons.map(year => <option key={year} value={year}>{year.replace("-", "–")}</option>)}
+      </select></label>
+      {seasonError && <p className="notice" role="alert">Season archive unavailable. {seasonError}</p>}
+      {season && <label>Find a game<input type="search" value={gameFilter} onChange={event => setGameFilter(event.target.value)}
+        placeholder="Filter by team or date, e.g. Lakers or 2021-12-25" /></label>}
+      <label>Matchup<select value={key} onChange={event => choose(event.target.value)} disabled={requesting || loading}>
+        <option value="">{loading ? "Loading matchups…" : visibleGames.length ? "Choose a matchup" : "No matching games"}</option>
+        {visibleGames.map(game => <option key={gameKey(game)} value={gameKey(game)}>{gameLabel(game)} · {readableDate(game.game_date)}</option>)}
       </select></label>
       {key && <label>Find a player<input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Search by name" /></label>}
       {requesting && <p role="status">Loading player data…</p>}
-      {!key && !loading && <p className="muted">Completed games are available to explore as replays.</p>}
+      {season && !loading && !error && <p className="muted" role="status">{visibleGames.length} of {games.length} games shown.</p>}
+      {!key && !loading && !season && <p className="muted">Choose a season to browse the full archive.</p>}
+      {selected?.status === "replay" && roster.length > 0 && <p className="muted">Replay estimates use only prior stats. Some players may not have enough earlier games to receive a projection.</p>}
       {key && !requesting && !filtered.length && !error && <Notice>{query ? "No players match your search." : "No recent player logs are available for these teams."}</Notice>}
       {!!filtered.length && <div className="roster">
         {[selected?.away_team_id, selected?.home_team_id].map((team, index) => {

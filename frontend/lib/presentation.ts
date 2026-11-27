@@ -4,17 +4,26 @@ const slug = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "-").
 
 export const gameKey = (game: Game) => `${game.game_date}/${slug(`${game.away} at ${game.home}`)}`;
 export const gameHref = (game: Game) => `/matchups/${gameKey(game)}`;
-export const playerHref = (game: Game) => `/players?matchup=${encodeURIComponent(gameKey(game))}`;
+export function playerHref(game: Game) {
+  const query = new URLSearchParams({ matchup: gameKey(game) });
+  if (game.season) query.set("season", game.season);
+  return `/players?${query}`;
+}
 export const analystHref = (game: Game) => `/analyst?matchup=${encodeURIComponent(gameKey(game))}`;
 
 export function gameLabel(game: Game) {
   return `${game.away} at ${game.home}`;
 }
 
+const compactDate = new Intl.DateTimeFormat("en-US", {
+  weekday: "short", month: "short", day: "numeric", timeZone: "UTC",
+});
+const fullDate = new Intl.DateTimeFormat("en-US", {
+  weekday: "long", month: "long", day: "numeric", timeZone: "UTC",
+});
+
 export function readableDate(value: string, long = false) {
-  return new Intl.DateTimeFormat("en-US", {
-    weekday: long ? "long" : "short", month: long ? "long" : "short", day: "numeric", timeZone: "UTC",
-  }).format(new Date(`${value}T12:00:00Z`));
+  return (long ? fullDate : compactDate).format(new Date(`${value}T12:00:00Z`));
 }
 
 export function gameTime(value?: string) {

@@ -135,3 +135,28 @@ def test_hosted_analyst_round_trip(monkeypatch):
     assert analyst.ask("How did Boston do?")["answer"] == "Boston won four games."
     assert calls[1][-1]["tool_call_id"] == "call_1"
     assert json.loads(calls[1][-1]["content"]) == {"team": "BOS", "wins": 4}
+
+
+def test_season_archive_includes_games_without_play_by_play(tmp_path, monkeypatch):
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    from app.models import Base, Game
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'archive.db'}")
+    Base.metadata.create_all(engine)
+    sessions = sessionmaker(bind=engine)
+    monkeypatch.setattr(services, "SessionLocal", sessions)
+    with sessions.begin() as session:
+        session.add_all([
+            Game(game_id="0022100001", season="2021-22", game_date=date(2021, 10, 19),
+                 home_team_id=1610612747, away_team_id=1610612744, home_win=False),
+            Game(game_id="0022200001", season="2022-23", game_date=date(2022, 10, 18),
+                 home_team_id=1610612744, away_team_id=1610612747, home_win=True),
+        ])
+    client = TestClient(main.app)
+    assert client.get("/archive/seasons").json() == {"seasons": ["2022-23", "2021-22"]}
+    archive = client.get("/archive/seasons/2021-22/games").json()["games"]
+    assert [(g["game_id"], g["home"]) for g in archive] == [("0022100001", "Los Angeles Lakers")]
+    assert client.get("/archive/seasons/unknown/games").status_code == 422
+    engine.dispose()

@@ -51,6 +51,16 @@ def health():
     return {"status": "ok", "models": list(load_models()), "analyst_enabled": settings.analyst_enabled}
 
 
+@app.get("/archive/seasons")
+def archive_seasons():
+    return services.archive_seasons()
+
+
+@app.get("/archive/seasons/{season}/games")
+def season_games(season: Annotated[str, StringConstraints(pattern=r"^\d{4}-\d{2}$")]):
+    return services.season_games(season)
+
+
 @app.get("/games/today")
 def games(day: date | None = None):
     return services.game_list(day or today())

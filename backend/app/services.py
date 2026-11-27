@@ -48,6 +48,21 @@ def game_list(day):
             "warning": warning}
 
 
+def archive_seasons():
+    with SessionLocal() as session:
+        seasons = session.scalars(select(Game.season).where(Game.home_win.is_not(None))
+                                 .distinct().order_by(Game.season.desc())).all()
+    return {"seasons": seasons}
+
+
+def season_games(season):
+    with SessionLocal() as session:
+        games = session.scalars(select(Game).where(
+            Game.season == season, Game.home_win.is_not(None),
+        ).order_by(Game.game_date.desc(), Game.game_id)).all()
+    return {"games": [archived(game) for game in games]}
+
+
 def matchup(game_id):
     if game_id.startswith("e"):
         try:
@@ -90,6 +105,14 @@ def matchup_players(game_id):
     game = matchup(game_id)
     day = date.fromisoformat(game["game_date"])
     log = PlayerGameLog
+    if game["status"] == "replay":
+        with SessionLocal() as session:
+            appeared = session.execute(select(log.player_id, log.player_name, log.team_id)
+                .where(log.game_id == game_id, log.minutes > 0).order_by(log.player_name)).all()
+        if appeared:
+            return [{"id": row.player_id, "name": row.player_name, "team_id": row.team_id}
+                    for row in appeared]
+
     latest = select(log.player_id, log.player_name, log.team_id, func.row_number().over(
         partition_by=log.player_id, order_by=(log.game_date.desc(), log.game_id.desc()),
     ).label("rank")).where(log.game_date < day, log.game_date >= day - timedelta(days=45),
@@ -186,10 +209,18 @@ def project(player_id, game_id):
     if len(logs) < 3:
         raise DataUnavailable("The player needs at least three prior appearances.")
     last = logs.iloc[-1]
-    if last.team_id not in (game["home_team_id"], game["away_team_id"]):
+    team_id = last.team_id
+    if game["status"] == "replay":
+        with SessionLocal() as session:
+            recorded_team = session.scalar(select(PlayerGameLog.team_id).where(
+                PlayerGameLog.game_id == game_id, PlayerGameLog.player_id == player_id))
+        # Use matchup membership only; the projection features still exclude the target box score.
+        if recorded_team is not None:
+            team_id = recorded_team
+    if team_id not in (game["home_team_id"], game["away_team_id"]):
         raise DataUnavailable("The player's latest logged team is outside this matchup.")
     target = {**last.to_dict(), "game_id": game_id, "game_date": pd.Timestamp(game["game_date"]),
-              "is_home": last.team_id == game["home_team_id"], "minutes": 1.0}
+              "team_id": team_id, "is_home": team_id == game["home_team_id"], "minutes": 1.0}
     table = build_player_table(pd.concat([logs, pd.DataFrame([target])]), games, stats)
     row = table[table.game_id.eq(game_id)]
     bundle, meta = load_models()["player_props_v1"]
